@@ -86,7 +86,10 @@ class Github:
         return False
 
 
-    async def is_force_push(self, repo_name: str, before_sha: str, after_sha: str) -> bool:
+    async def is_force_push(self, repo_name: str, before_sha: str, after_sha: str, ref: str) -> bool:
+        if ref not in ("refs/heads/main", "refs/heads/master"):
+            return False
+
         try:
             async with httpx.AsyncClient() as client:
                 compare_url = f"https://api.github.com/repos/{repo_name}/compare/{before_sha}...{after_sha}"
