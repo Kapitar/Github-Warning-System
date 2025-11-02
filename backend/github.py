@@ -85,6 +85,7 @@ class Github:
         
         return False
 
+
     async def is_force_push(self, repo_name: str, before_sha: str, after_sha: str) -> bool:
         try:
             async with httpx.AsyncClient() as client:
@@ -109,6 +110,20 @@ class Github:
             print(f"Error checking force push: {e}")
             return False
     
+    async def detect_spam(self, repo_name: str, created_at: str) -> int:
+        from main import redis_client
+        redis_key = f"spam_check:{repo_name}"
+        timestamp = time.mktime(time.strptime(created_at, "%Y-%m-%dT%H:%M:%SZ"))
+        await redis_client.zadd(redis_key, {created_at: timestamp})
+        
+        cutoff_time = timestamp - 600
+        await redis_client.zremrangebyscore(redis_key, 0, cutoff_time)
+        await redis_client.expire(redis_key, 3600)
+        
+        recent_count = await redis_client.zcard(redis_key)
+        
+        return recent_count
+    
     async def poll_github_events(self) -> None:
         async with httpx.AsyncClient() as client:
             while True:
@@ -129,9 +144,13 @@ class Github:
                     self.attempts = 0
                     events = response.json()
                     for event in events:
+                        from main import redis_client
                         if event["type"] == "PushEvent":
-                            from main import redis_client
                             await redis_client.rpush("push_events", json.dumps(event))
+                        if event["type"] in ["IssuesEvent", "PullRequestEvent"]:
+                            action = event.get("payload", {}).get("action")
+                            if action in ["opened", "reopened"]:
+                                await redis_client.rpush("spam_events", json.dumps(event))
                         
                     await asyncio.sleep(self.poll_interval)
                 except Exception as e:
