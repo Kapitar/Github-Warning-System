@@ -85,6 +85,30 @@ class Github:
         
         return False
 
+    async def is_force_push(self, repo_name: str, before_sha: str, after_sha: str) -> bool:
+        try:
+            async with httpx.AsyncClient() as client:
+                compare_url = f"https://api.github.com/repos/{repo_name}/compare/{before_sha}...{after_sha}"
+                
+                headers = self.get_headers()
+                    
+                response = await client.get(
+                    compare_url,
+                    headers=headers
+                )
+                
+                if (await self.handle_error_codes(response)):
+                    return False
+                
+                if response.status_code == 200:
+                    compare_data = response.json()
+                    return compare_data.get('status') in ['diverged', 'behind']
+                
+                return False
+        except Exception as e:
+            print(f"Error checking force push: {e}")
+            return False
+    
     async def poll_github_events(self) -> None:
         async with httpx.AsyncClient() as client:
             while True:
@@ -96,6 +120,7 @@ class Github:
                     
                     response = await client.get(
                         "https://api.github.com/events",
+                        headers=headers
                     )
                     
                     if (await self.handle_error_codes(response)):
@@ -105,8 +130,8 @@ class Github:
                     events = response.json()
                     for event in events:
                         if event["type"] == "PushEvent":
-                            from main import redis
-                            await redis.rpush("push_events", json.dumps(event))
+                            from main import redis_client
+                            await redis_client.rpush("push_events", json.dumps(event))
                         
                     await asyncio.sleep(self.poll_interval)
                 except Exception as e:
