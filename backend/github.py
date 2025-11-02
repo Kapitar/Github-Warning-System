@@ -1,5 +1,4 @@
 import os
-import redis
 import json
 import math
 import time
@@ -106,6 +105,7 @@ class Github:
                     events = response.json()
                     for event in events:
                         if event["type"] == "PushEvent":
+                            from main import redis
                             await redis.rpush("push_events", json.dumps(event))
                         
                     await asyncio.sleep(self.poll_interval)
