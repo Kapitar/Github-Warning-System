@@ -65,6 +65,7 @@ async def lifespan(app: FastAPI):
     yield
     poll_github_events_task.cancel()
     process_push_events_task.cancel()
+    process_spam_events_task.cancel()
 
 app = FastAPI(lifespan=lifespan)
 
