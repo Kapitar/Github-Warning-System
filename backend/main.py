@@ -10,6 +10,7 @@ from redis.asyncio import Redis
 from dotenv import load_dotenv
 from pprint import pprint
 
+import database
 from github import Github
 
 redis_client = None
@@ -55,6 +56,8 @@ async def process_spam_events():
 async def lifespan(app: FastAPI):
     global redis_client, github_client
     load_dotenv()
+    
+    await database.init_db()
     
     redis_client = Redis(host=os.getenv("REDIS_HOST"), port=os.getenv("REDIS_PORT"), db=0, decode_responses=False)
     github_client = Github()
