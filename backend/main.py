@@ -36,7 +36,6 @@ async def is_force_push(repo_name: str, before_sha: str, after_sha: str) -> bool
         print(f"Error checking force push: {e}")
         return False
 
-
 async def process_github_events():
     while True:
         try:
@@ -48,16 +47,12 @@ async def process_github_events():
             event_data = json.loads(event.decode('utf-8'))
             has_force_push = await is_force_push(event_data["repo"]["name"], event_data["payload"]["before"], event_data["payload"]["head"])
             
-            # print(event_data["repo"]["name"], has_force_push)
+            print(event_data["repo"]["name"], has_force_push)
             
             await asyncio.sleep(0.1)
         except Exception as e:
             print("Error processing GitHub events:", e)
             await asyncio.sleep(5)
-
-
-
-    
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
