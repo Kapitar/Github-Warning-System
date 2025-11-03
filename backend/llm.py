@@ -70,6 +70,7 @@ PATTERN ANALYSIS GUIDELINES:
 
 OUTPUT FORMAT (STRICT):
 - Output MUST be a raw JSON array, not a string.
+- Do not include ```json or other code fences.
 - No escape characters (\\n, \\").
 - No code fences.
 - 3–5 items total.
