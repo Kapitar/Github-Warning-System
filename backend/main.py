@@ -20,6 +20,21 @@ redis_client = None
 github_client = None
 
 async def process_push_events():
+    """
+    Process GitHub PushEvents from Redis queue to detect force pushes.
+    
+    Continuously polls the 'push_events' Redis queue for new push events.
+    For each event, checks if it was a force push to main/master branch.
+    If a force push is detected:
+    - Retrieves historical force push accidents for the repository
+    - Generates an AI summary of the incident
+    - Saves the summary and records the accident in the database
+    
+    Runs indefinitely as a background task.
+    
+    Raises:
+        Exception: Logs any errors and continues processing after 5s delay
+    """
     while True:
         try:
             event = await redis_client.lpop("push_events")
@@ -30,7 +45,7 @@ async def process_push_events():
             event_data = json.loads(event.decode('utf-8'))
             has_force_push = await github_client.is_force_push(event_data["repo"]["name"], event_data["payload"]["before"], event_data["payload"]["head"], event_data["payload"]["ref"])
             
-            print(event_data["repo"]["name"], has_force_push)
+            # print(event_data["repo"]["name"], has_force_push)
             if has_force_push:
                 print("FORCE_PUSH: ", event_data)
                 accidents = await database.get_accidents("force_push", event_data["repo"]["name"])
@@ -45,6 +60,23 @@ async def process_push_events():
             await asyncio.sleep(5)
             
 async def process_spam_events():
+    """
+    Process GitHub issue/PR events from Redis queue to detect spam activity.
+    
+    Continuously polls the 'spam_events' Redis queue for new issue/PR creation events.
+    For each event:
+    - Detects if there's suspicious activity (multiple events in short timeframe)
+    - Records the accident in the database
+    - If spam threshold is exceeded (≥1 suspicious events):
+      * Retrieves recent issue creation accidents from last 24 hours
+      * Generates an AI summary of the activity spike
+      * Saves the summary to the database
+    
+    Runs indefinitely as a background task.
+    
+    Raises:
+        Exception: Logs any errors and continues processing after 5s delay
+    """
     while True:
         try:
             event = await redis_client.lpop("spam_events")
@@ -57,7 +89,7 @@ async def process_spam_events():
             
             print(event_data["repo"]["name"], spam_events)
             await database.save_accident("issue_created", event_data["repo"]["name"])
-            if (spam_events >= 3):
+            if (spam_events >= 1):
                 print("SUS ACTIVITY: ", event_data)
                 accidents = await database.get_accidents("issue_created", event_data["repo"]["name"], hours=24)
                 summary = await llm.generate_activity_spike_summary(event_data, accidents)
@@ -101,12 +133,47 @@ app.add_middleware(
 
 @app.get("/summary")
 async def get_summaries(since: int):
+    """
+    Get event summaries created after a specific timestamp.
+    
+    Retrieves all event summaries that were created after the provided
+    Unix timestamp. Useful for fetching historical data or catching up
+    on missed events.
+    
+    Args:
+        since: Unix timestamp (seconds since epoch). Returns all summaries
+               created after this time. Use 0 to get all summaries.
+    
+    Returns:
+        list[EventSummary]: List of event summaries ordered by creation time (newest first)
+    
+    Example:
+        GET /summary?since=1699000000
+        GET /summary?since=0  # Get all summaries
+    """
     summaries = await database.get_event_summaries(since, limit=100000, offset=0)
     return summaries
 
 
 @app.get("/details")
 async def get_repo_details(repo_name: str):
+    """
+    Get detailed information about a specific repository.
+    
+    Retrieves the most recent event summary and all force push accidents
+    for the specified repository.
+    
+    Args:
+        repo_name: Full repository name (e.g., "owner/repo")
+    
+    Returns:
+        dict: Contains:
+            - summary: Most recent EventSummary or None
+            - accidents: List of Accident objects for force pushes
+    
+    Example:
+        GET /details?repo_name=owner/repo
+    """
     summary = await database.get_event_summaries_by_repo(repo_name)
     accidents = await database.get_accidents("force_push", repo_name)
     return {
@@ -117,6 +184,34 @@ async def get_repo_details(repo_name: str):
 
 @app.get("/stream")
 async def stream_summaries():
+    """
+    Stream event summaries in real-time using Server-Sent Events (SSE).
+    
+    Establishes a persistent connection that pushes new event summaries
+    to the client as they are created. On initial connection, sends all
+    historical summaries, then only new ones going forward.
+    
+    The stream sends data in SSE format:
+        data: {"id": 1, "payload": {...}, "summary": "...", "created_at": "..."}
+    
+    Returns:
+        StreamingResponse: SSE stream with media type "text/event-stream"
+    
+    Headers:
+        - Cache-Control: no-cache
+        - Connection: keep-alive
+        - X-Accel-Buffering: no
+    
+    Example:
+        GET /stream
+        
+        Client usage:
+        const eventSource = new EventSource('/stream');
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log(data);
+        };
+    """
     async def event_generator():
         last_check = 0
         
