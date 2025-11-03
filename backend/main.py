@@ -103,9 +103,11 @@ async def get_summaries(since: int):
 
 @app.get("/stream")
 async def stream_summaries():
-    async def event_generator():        
+    async def event_generator():
+        last_check = 0
+        
         while True:
-            summaries = await database.get_event_summaries(0, limit=50, offset=0)
+            summaries = await database.get_event_summaries(last_check, limit=50, offset=0)
             
             for summary in summaries:
                 data = json.dumps({
@@ -114,7 +116,11 @@ async def stream_summaries():
                     "summary": summary.summary,
                     "created_at": summary.created_at.isoformat()
                 })
-                yield f"data: {data}\n\n"            
+                yield f"data: {data}\n\n"
+                
+            if summaries:
+                last_check = int(summaries[0].created_at.timestamp()) + 1
+            
             await asyncio.sleep(5)
     
     return StreamingResponse(
