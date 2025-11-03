@@ -39,7 +39,7 @@ export default function DetailsPage() {
   const [heatmapValue, setHeatmapValue] = useState<any[]>([]);
   const searchParams = useSearchParams();
   const repoName = searchParams.get("repoName");
-  const accidentType = searchParams.get("accidentType");
+  const accidentType = searchParams.get("eventType");
 
   useEffect(() => {
     if (!repoName) return;
