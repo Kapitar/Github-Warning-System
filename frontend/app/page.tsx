@@ -26,9 +26,18 @@ export default function Home() {
 
   return (
     <div className="container mx-auto px-2">
-      <h1 className="text-5xl font-bold text-white my-4">
-        Github incident summaries
-      </h1>
+      <div className="flex justify-between">
+        <h1 className="text-5xl font-bold text-white my-4">
+          Github incident summaries
+        </h1>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+            <div className="absolute inset-0 w-3 h-3 bg-green-500 rounded-full animate-ping opacity-75"></div>
+          </div>
+          <span className="text-green-500 font-semibold">LIVE</span>
+        </div>
+      </div>
       <div className="flex flex-col gap-y-4">
         {activities.map((activity, index) => (
           <Card
