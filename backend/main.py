@@ -1,6 +1,8 @@
 import os
 import math
 import time
+import random
+from datetime import datetime, timedelta
 import json
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -101,6 +103,62 @@ async def process_spam_events():
             print("Error processing GitHub events:", e)
             await asyncio.sleep(5)
 
+async def generate_synthetic_data():
+    """
+    Generate synthetic GitHub events for testing.
+    
+    Creates fake PushEvents, IssuesEvents, and PullRequestEvents with
+    realistic data structure and queues them to Redis for processing.
+    """
+    
+    repos = [
+        "test-org/repo-1",
+        "test-org/repo-2",
+        "user/project-alpha",
+        "company/backend-service"
+    ]
+    
+    users = ["alice", "bob", "charlie", "dave"]
+    
+    # Generate spam/issue events
+    spam_repo = random.choice(repos)
+    for i in range(10):  # Generate burst of issues
+        event = {
+            "id": f"synthetic-issue-{i}",
+            "type": "IssuesEvent",
+            "actor": {
+                "id": 12345,
+                "login": "spammer",
+                "avatar_url": "https://avatars.githubusercontent.com/u/1?",
+                "url": "https://api.github.com/users/spammer"
+            },
+            "repo": {
+                "id": random.randint(100000, 999999),
+                "name": spam_repo,
+                "url": f"https://api.github.com/repos/{spam_repo}"
+            },
+            "payload": {
+                "action": "opened",
+                "issue": {
+                    "id": random.randint(100000, 999999),
+                    "number": i + 1,
+                    "title": f"Test issue {i}",
+                    "body": "This is a test issue",
+                    "html_url": f"https://github.com/{spam_repo}/issues/{i+1}"
+                }
+            },
+            "public": True,
+            "created_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        }
+        
+        await redis_client.rpush("spam_events", json.dumps(event))
+        print(f"Generated issue event #{i+1} for {spam_repo}")
+    
+    print("\n✅ Synthetic data generation complete!")
+    print(f"- Generated 5 force push events")
+    print(f"- Generated 10 issue events for spam detection")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global redis_client, github_client
@@ -111,6 +169,8 @@ async def lifespan(app: FastAPI):
     
     redis_client = Redis(host=os.getenv("REDIS_HOST"), port=os.getenv("REDIS_PORT"), db=0, decode_responses=False)
     github_client = Github()
+    
+    await generate_synthetic_data()
     
     poll_github_events_task = asyncio.create_task(github_client.poll_github_events())
     process_push_events_task = asyncio.create_task(process_push_events())
