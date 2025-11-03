@@ -1,19 +1,42 @@
-export default function Card() {
-  return (
-    <a className="" href="https://google.com">
-      <div className="hover:shadow-xl hover:shadow-indigo-500/30 p-4 px-8 bg-gray-800 text-white rounded-2xl">
-        <a href="https://google.com" className="font-bold text-2xl text-blue-600 hover:underline">Repo name</a>
-        <h2>Event Type: PushEvent</h2>
-        <ul className="list-disc list-inside">
-          <li>Summary 1</li>
-          <li>Summary 2</li>
-          <li>Summary 3</li>
-          <li>Summary 4</li>
-          <li>Summary 5</li>
-        </ul>
+"use client";
 
-        <p className="text-sm text-gray-500 mt-2">Pushed at: 2024-01-01 12:00:00</p>
-      </div>
-    </a>
-  )
+import { useRouter } from "next/navigation";
+
+interface CardProps {
+  repoName: string;
+  eventType: string;
+  summaries: string[];
+  pushedAt: string;
+}
+
+export default function Card({
+  repoName,
+  eventType,
+  summaries,
+  pushedAt,
+}: CardProps) {
+  const router = useRouter();
+
+  const handleCardClick = () => {
+    router.push(`/details/${encodeURIComponent(repoName)}`);
+  };
+
+  return (
+    <div onClick={handleCardClick} className="hover:shadow-xl hover:shadow-indigo-500/30 p-4 px-8 bg-gray-800 text-white rounded-2xl">
+      <a
+        href={`https://github.com/${repoName}`}
+        className="font-bold text-2xl text-blue-600 hover:underline"
+      >
+        {repoName}
+      </a>
+      <h2>Event Type: {eventType}</h2>
+      <ul className="list-disc list-inside">
+        {summaries.map((item, index) => (
+          <li key={index}>{item}</li>
+        ))}
+      </ul>
+
+      <p className="text-sm text-gray-500 mt-2">Pushed at: {pushedAt}</p>
+    </div>
+  );
 }
