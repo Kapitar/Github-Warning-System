@@ -105,6 +105,16 @@ async def get_summaries(since: int):
     return summaries
 
 
+@app.get("/details")
+async def get_repo_details(repo_name: str):
+    summary = await database.get_event_summaries_by_repo(repo_name)
+    accidents = await database.get_accidents("force_push", repo_name)
+    return {
+        "summary": summary,
+        "accidents": accidents
+    }
+
+
 @app.get("/stream")
 async def stream_summaries():
     async def event_generator():

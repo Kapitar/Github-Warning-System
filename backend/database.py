@@ -90,3 +90,19 @@ async def get_event_summaries(
         
         result = await session.execute(statement)
         return result.scalars().all()
+    
+    
+async def get_event_summaries_by_repo(
+    repo_name: str,
+) -> EventSummary | None:
+    async with async_session_maker() as session:
+        statement = select(EventSummary).order_by(EventSummary.created_at.desc())
+        
+        result = await session.execute(statement)
+        summaries = result.scalars().all()
+        
+        for summary in summaries:
+            if summary.payload.get("repo", {}).get("name") == repo_name:
+                return summary
+        
+        return None
