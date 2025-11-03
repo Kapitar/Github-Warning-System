@@ -45,7 +45,11 @@ export default function DetailsPage() {
     if (!repoName) return;
 
     fetch(
-      `http://localhost:8000/details?repo_name=${encodeURIComponent(repoName)}&accident_type=${accidentType == "PushEvent" ? "force_push" : "issue_created"}`
+      `http://localhost:8000/details?repo_name=${encodeURIComponent(
+        repoName
+      )}&accident_type=${
+        accidentType == "PushEvent" ? "force_push" : "issue_created"
+      }`
     )
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch details");
@@ -58,12 +62,11 @@ export default function DetailsPage() {
 
         const allHours = Array.from({ length: 24 }, (_, hour) => ({
           hour,
-          hourLabel: `${hour.toString().padStart(2, '0')}:00`,
+          hourLabel: `${hour.toString().padStart(2, "0")}:00`,
           count: 0,
-          name: `${hour.toString().padStart(2, '0')}:00`,
+          name: `${hour.toString().padStart(2, "0")}:00`,
         }));
-  
-        // Fill in actual accident data
+
         if (data?.accidents && data.accidents.length > 0) {
           data.accidents.forEach((accident: any) => {
             const date = new Date(accident.timestamp);
@@ -71,7 +74,7 @@ export default function DetailsPage() {
             allHours[hour].count += 1;
           });
         }
-  
+
         setChartData(allHours);
 
         const value =
@@ -132,48 +135,50 @@ export default function DetailsPage() {
           <Tooltip id="heatmap-tooltip" />
         </div>
       )}
-      <div className="bg-white p-4 mt-8">
-        <BarChart
-          className="mx-auto"
-          width={800}
-          height={400}
-          data={chartData}
-          margin={{
-            top: 5,
-            right: 30,
-            left: 20,
-            bottom: 5,
-          }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey="name"
-            label={{
-              value: "Hour of Day",
-              position: "insideBottom",
-              offset: -5,
+      {data?.summary?.payload.type !== "PushEvent" && (
+        <div className="bg-white p-4 mt-8">
+          <BarChart
+            className="mx-auto"
+            width={800}
+            height={400}
+            data={chartData}
+            margin={{
+              top: 5,
+              right: 30,
+              left: 20,
+              bottom: 5,
             }}
-          />
-          <YAxis
-            label={{
-              value: "Number of Issues/PR",
-              angle: -90,
-              position: "insideLeft",
-            }}
-          />
-          <RechartsTooltip
-            formatter={(value) => [`${value} issues`, "Count"]}
-          />
-          <Legend />
-          <Bar
-            dataKey="count"
-            fill="#8884d8"
-            name="Issues"
-            activeBar={<Rectangle fill="#82ca9d" stroke="purple" />}
-          />
-        </BarChart>
-        );
-      </div>
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="name"
+              label={{
+                value: "Hour of Day",
+                position: "insideBottom",
+                offset: -5,
+              }}
+            />
+            <YAxis
+              label={{
+                value: "Number of Issues/PR",
+                angle: -90,
+                position: "insideLeft",
+              }}
+            />
+            <RechartsTooltip
+              formatter={(value) => [`${value} issues`, "Count"]}
+            />
+            <Legend />
+            <Bar
+              dataKey="count"
+              fill="#8884d8"
+              name="Issues"
+              activeBar={<Rectangle fill="#82ca9d" stroke="purple" />}
+            />
+          </BarChart>
+          );
+        </div>
+      )}
     </div>
   );
 }
