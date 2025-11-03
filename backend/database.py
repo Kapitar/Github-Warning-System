@@ -33,11 +33,11 @@ async def save_event_summary(payload: dict, summary: str) -> EventSummary:
         return event
     
 
-async def get_event_summaries(since: int) -> list[EventSummary]:
+async def get_event_summaries(since: int = 0, limit: int = 50, offset: int = 0) -> list[EventSummary]:
     async with async_session_maker() as session:
         statement = select(EventSummary).where(
             EventSummary.created_at >= datetime.fromtimestamp(since)
-        ).order_by(EventSummary.created_at.desc())
+        ).order_by(EventSummary.created_at.desc()).limit(limit).offset(offset)
         
         result = await session.execute(statement)
         return result.scalars().all()
