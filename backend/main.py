@@ -275,11 +275,15 @@ async def stream_summaries():
     """
     async def event_generator():
         last_check = 0
+        sent_ids = set()
         
         while True:
             summaries = await database.get_event_summaries(last_check, limit=50, offset=0)
             
             for summary in summaries:
+                if summary.id in sent_ids:
+                    continue
+                
                 data = json.dumps({
                     "id": summary.id,
                     "payload": summary.payload,
@@ -287,10 +291,11 @@ async def stream_summaries():
                     "created_at": summary.created_at.isoformat()
                 })
                 yield f"data: {data}\n\n"
+                sent_ids.add(summary.id)
                 
             if summaries:
-                last_check = int(summaries[0].created_at.timestamp()) + 1
-            
+                last_check = int(max(s.created_at.timestamp() for s in summaries)) + 1
+                            
             await asyncio.sleep(5)
     
     return StreamingResponse(
