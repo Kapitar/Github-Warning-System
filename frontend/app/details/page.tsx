@@ -25,6 +25,7 @@ interface DetailsData {
 export default function DetailsPage() {
   const [data, setData] = useState<DetailsData>();
   const [summaries, setSummaries] = useState<String[]>();
+  const [heatmapValue, setHeatmapValue] = useState<any[]>([]);
   const searchParams = useSearchParams();
   const repoName = searchParams.get("repoName");
 
@@ -42,21 +43,21 @@ export default function DetailsPage() {
         setData(data);
         setSummaries(JSON.parse(data.summary.summary));
         console.log(data);
+
+        const value = data?.accidents.reduce((acc: any[], accident: any) => {
+          const date = new Date(accident.timestamp).toISOString().split('T')[0];
+          const existing = acc.find(item => item.date === date);
+          if (existing) {
+            existing.count += 1;
+          } else {
+            acc.push({ date, count: 1 });
+          }
+          return acc;
+        }, []) || [];
+        console.log(value)
+        setHeatmapValue(value);
       });
   }, [repoName]);
-
-  const heatmapValue = data?.accidents.reduce((acc: any[], accident) => {
-    const date = new Date(accident.timestamp).toISOString().split('T')[0];
-    const existing = acc.find(item => item.date === date);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      acc.push({ date, count: 1 });
-    }
-    return acc;
-  }, []) || [];
-
-  console.log(heatmapValue);
 
   return (
     <div className="container mx-auto px-4 mt-8">
@@ -74,7 +75,8 @@ export default function DetailsPage() {
         theme="monikai"
       ></JSONPretty>
 
-      <div className="bg-white p-4 relative">
+      <div className="bg-white p-4 relative mt-4">
+        <h1 className="text-black text-2xl">Heatmap of force pushes</h1>
         <HeatMap
           value={heatmapValue}
           width={730}
