@@ -5,7 +5,17 @@ import { useEffect, useState } from "react";
 import JSONPretty from "react-json-pretty";
 import "react-json-pretty/themes/monikai.css";
 import HeatMap from "@uiw/react-heat-map";
-import { Tooltip } from 'react-tooltip';
+import { Tooltip } from "react-tooltip";
+import {
+  BarChart,
+  Bar,
+  Rectangle,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+  Tooltip as RechartsTooltip,
+} from "recharts";
 
 interface DetailsData {
   summary: {
@@ -25,15 +35,17 @@ interface DetailsData {
 export default function DetailsPage() {
   const [data, setData] = useState<DetailsData>();
   const [summaries, setSummaries] = useState<String[]>();
+  const [chartData, setChartData] = useState<any[]>();
   const [heatmapValue, setHeatmapValue] = useState<any[]>([]);
   const searchParams = useSearchParams();
   const repoName = searchParams.get("repoName");
+  const accidentType = searchParams.get("accidentType");
 
   useEffect(() => {
     if (!repoName) return;
 
     fetch(
-      `http://localhost:8000/details?repo_name=${encodeURIComponent(repoName)}`
+      `http://localhost:8000/details?repo_name=${encodeURIComponent(repoName)}&accident_type=${accidentType == "PushEvent" ? "force_push" : "issue_created"}`
     )
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch details");
@@ -44,17 +56,47 @@ export default function DetailsPage() {
         setSummaries(JSON.parse(data.summary.summary));
         console.log(data);
 
-        const value = data?.accidents.reduce((acc: any[], accident: any) => {
-          const date = new Date(accident.timestamp).toISOString().split('T')[0];
-          const existing = acc.find(item => item.date === date);
-          if (existing) {
-            existing.count += 1;
-          } else {
-            acc.push({ date, count: 1 });
-          }
-          return acc;
-        }, []) || [];
-        console.log(value)
+        const hourlyData = data.accidents.reduce(
+          (acc: any[], accident: any) => {
+            const date = new Date(accident.timestamp);
+            const hour = date.getHours();
+            const hourLabel = `${hour.toString().padStart(2, "0")}:00`;
+
+            const existing = acc.find((item) => item.hour === hour);
+
+            if (existing) {
+              existing.count += 1;
+            } else {
+              acc.push({
+                hour,
+                hourLabel,
+                count: 1,
+                name: hourLabel,
+              });
+            }
+            return acc;
+          },
+          []
+        );
+
+        hourlyData.sort((a: any, b: any) => a.hour - b.hour);
+
+        setChartData(hourlyData);
+
+        const value =
+          data?.accidents.reduce((acc: any[], accident: any) => {
+            const date = new Date(accident.timestamp)
+              .toISOString()
+              .split("T")[0];
+            const existing = acc.find((item) => item.date === date);
+            if (existing) {
+              existing.count += 1;
+            } else {
+              acc.push({ date, count: 1 });
+            }
+            return acc;
+          }, []) || [];
+        console.log(value);
         setHeatmapValue(value);
       });
   }, [repoName]);
@@ -74,25 +116,72 @@ export default function DetailsPage() {
         data={data?.summary?.payload}
         theme="monikai"
       ></JSONPretty>
+      {data?.summary?.payload.type === "PushEvent" && (
+        <div className="bg-white p-4 relative mt-4">
+          <h1 className="text-black text-2xl">Heatmap of force pushes</h1>
 
-      <div className="bg-white p-4 relative mt-4">
-        <h1 className="text-black text-2xl">Heatmap of force pushes</h1>
-        <HeatMap
-          value={heatmapValue}
-          width={730}
-          weekLabels={["", "Mon", "", "Wed", "", "Fri", ""]}
-          startDate={new Date(new Date().setFullYear(new Date().getFullYear() - 1))}
-          rectRender={(props, data) => {
-            return ( 
-              <rect 
-                {...props} 
-                data-tooltip-id="heatmap-tooltip"
-                data-tooltip-content={`count: ${data.count || 0}`}
-              />
-            );
+          <HeatMap
+            value={heatmapValue}
+            width={730}
+            weekLabels={["", "Mon", "", "Wed", "", "Fri", ""]}
+            startDate={
+              new Date(new Date().setFullYear(new Date().getFullYear() - 1))
+            }
+            rectRender={(props, data) => {
+              return (
+                <rect
+                  {...props}
+                  data-tooltip-id="heatmap-tooltip"
+                  data-tooltip-content={`count: ${data.count || 0}`}
+                />
+              );
+            }}
+          />
+
+          <Tooltip id="heatmap-tooltip" />
+        </div>
+      )}
+      <div className="bg-white p-4 mt-8">
+        <BarChart
+          className="mx-auto"
+          width={800}
+          height={400}
+          data={chartData}
+          margin={{
+            top: 5,
+            right: 30,
+            left: 20,
+            bottom: 5,
           }}
-        />
-        <Tooltip id="heatmap-tooltip" />
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis
+            dataKey="name"
+            label={{
+              value: "Hour of Day",
+              position: "insideBottom",
+              offset: -5,
+            }}
+          />
+          <YAxis
+            label={{
+              value: "Number of Accidents",
+              angle: -90,
+              position: "insideLeft",
+            }}
+          />
+          <RechartsTooltip
+            formatter={(value) => [`${value} accidents`, "Count"]}
+          />
+          <Legend />
+          <Bar
+            dataKey="count"
+            fill="#8884d8"
+            name="Accidents"
+            activeBar={<Rectangle fill="#82ca9d" stroke="purple" />}
+          />
+        </BarChart>
+        );
       </div>
     </div>
   );

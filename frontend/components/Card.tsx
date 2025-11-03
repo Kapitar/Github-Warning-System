@@ -18,7 +18,7 @@ export default function Card({
   const router = useRouter();
 
   const handleCardClick = () => {
-    router.push(`/details?repoName=${encodeURIComponent(repoName)}`);
+    router.push(`/details?repoName=${encodeURIComponent(repoName)}&eventType=${encodeURIComponent(eventType)}`);
   };
 
   return (

@@ -216,7 +216,7 @@ async def get_summaries(since: int):
 
 
 @app.get("/details")
-async def get_repo_details(repo_name: str):
+async def get_repo_details(repo_name: str, accident_type: str):
     """
     Get detailed information about a specific repository.
     
@@ -225,6 +225,7 @@ async def get_repo_details(repo_name: str):
     
     Args:
         repo_name: Full repository name (e.g., "owner/repo")
+        accident_type: Type of accident to filter (e.g., "force_push" or "issue_created")
     
     Returns:
         dict: Contains:
@@ -235,7 +236,7 @@ async def get_repo_details(repo_name: str):
         GET /details?repo_name=owner/repo
     """
     summary = await database.get_event_summaries_by_repo(repo_name)
-    accidents = await database.get_accidents("force_push", repo_name)
+    accidents = await database.get_accidents(accident_type, repo_name)
     return {
         "summary": summary,
         "accidents": accidents
