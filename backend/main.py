@@ -4,6 +4,7 @@ import time
 import json
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 import asyncio
 import httpx
 from redis.asyncio import Redis
@@ -87,5 +88,33 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/summary")
 async def get_summaries(since: int):
-    summaries = await database.get_event_summaries(since)
+    summaries = await database.get_event_summaries(since, limit=100000, offset=0)
     return summaries
+
+
+@app.get("/stream")
+async def stream_summaries():
+    async def event_generator():        
+        while True:
+            summaries = await database.get_event_summaries(last_check, limit=50, offset=0)
+            
+            for summary in summaries:
+                data = json.dumps({
+                    "id": summary.id,
+                    "payload": summary.payload,
+                    "summary": summary.summary,
+                    "created_at": summary.created_at.isoformat()
+                })
+                yield f"data: {data}\n\n"
+                
+                last_check = int(summary.created_at.timestamp())
+            
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
