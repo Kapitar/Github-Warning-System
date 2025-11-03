@@ -56,32 +56,23 @@ export default function DetailsPage() {
         setSummaries(JSON.parse(data.summary.summary));
         console.log(data);
 
-        const hourlyData = data.accidents.reduce(
-          (acc: any[], accident: any) => {
+        const allHours = Array.from({ length: 24 }, (_, hour) => ({
+          hour,
+          hourLabel: `${hour.toString().padStart(2, '0')}:00`,
+          count: 0,
+          name: `${hour.toString().padStart(2, '0')}:00`,
+        }));
+  
+        // Fill in actual accident data
+        if (data?.accidents && data.accidents.length > 0) {
+          data.accidents.forEach((accident: any) => {
             const date = new Date(accident.timestamp);
             const hour = date.getHours();
-            const hourLabel = `${hour.toString().padStart(2, "0")}:00`;
-
-            const existing = acc.find((item) => item.hour === hour);
-
-            if (existing) {
-              existing.count += 1;
-            } else {
-              acc.push({
-                hour,
-                hourLabel,
-                count: 1,
-                name: hourLabel,
-              });
-            }
-            return acc;
-          },
-          []
-        );
-
-        hourlyData.sort((a: any, b: any) => a.hour - b.hour);
-
-        setChartData(hourlyData);
+            allHours[hour].count += 1;
+          });
+        }
+  
+        setChartData(allHours);
 
         const value =
           data?.accidents.reduce((acc: any[], accident: any) => {
@@ -165,19 +156,19 @@ export default function DetailsPage() {
           />
           <YAxis
             label={{
-              value: "Number of Accidents",
+              value: "Number of Issues/PR",
               angle: -90,
               position: "insideLeft",
             }}
           />
           <RechartsTooltip
-            formatter={(value) => [`${value} accidents`, "Count"]}
+            formatter={(value) => [`${value} issues`, "Count"]}
           />
           <Legend />
           <Bar
             dataKey="count"
             fill="#8884d8"
-            name="Accidents"
+            name="Issues"
             activeBar={<Rectangle fill="#82ca9d" stroke="purple" />}
           />
         </BarChart>
