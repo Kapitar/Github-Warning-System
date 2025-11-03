@@ -86,7 +86,7 @@ async def get_event_summaries(
     async with async_session_maker() as session:
         statement = select(EventSummary).where(
             EventSummary.created_at > datetime.fromtimestamp(since)
-        ).order_by(EventSummary.created_at.desc()).limit(limit).offset(offset)
+        ).order_by(EventSummary.created_at.asc()).limit(limit).offset(offset)
         
         result = await session.execute(statement)
         return result.scalars().all()
