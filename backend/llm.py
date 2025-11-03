@@ -199,7 +199,7 @@ Output ONLY the raw JSON array as specified above.
 async def generate_activity_spike_summary(payload: dict, accidents: list[Accident]) -> str:
     response = client.responses.create(
         model="gpt-4o",
-        instructions=force_push_instructions,
+        instructions=activity_spike_instructions,
         input="Event Payload: " + str(payload) + "\nAccidents: " + str(accidents)
     )
     return response.output_text
