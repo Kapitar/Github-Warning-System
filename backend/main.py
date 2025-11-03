@@ -85,6 +85,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
+@app.get("/summary")
+async def get_summaries(since: int):
+    summaries = await database.get_event_summaries(since)
+    return summaries
