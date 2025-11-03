@@ -1,6 +1,8 @@
 import os
 from openai import OpenAI
 
+from database import Accident
+
 client = None
 
 async def init_llm():
@@ -102,11 +104,11 @@ Now analyze event_payload and accidents, then output ONLY the raw JSON array as 
 """
 
 
-async def generate_force_push_summary(payload: dict):
+async def generate_force_push_summary(payload: dict, accidents: list[Accident]) -> str:
     response = client.responses.create(
         model="gpt-4o",
         instructions=force_push_instructions,
-        input=str(payload),
+        input="Event Payload: " + str(payload) + "\nAccidents: " + str(accidents)
     )
     return response.output_text
 
@@ -193,10 +195,10 @@ Output ONLY the raw JSON array as specified above.
 """
 
 
-async def generate_activity_spike_summary(payload: dict, issues_last_10m: int):
+async def generate_activity_spike_summary(payload: dict, accidents: list[Accident]) -> str:
     response = client.responses.create(
         model="gpt-4o",
         instructions=force_push_instructions,
-        input="Event Payload: " + str(payload) + "\nIssues Last 10 Minutes: " + str(issues_last_10m)
+        input="Event Payload: " + str(payload) + "\nAccidents: " + str(accidents)
     )
     return response.output_text

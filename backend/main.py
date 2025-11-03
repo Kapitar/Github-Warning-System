@@ -33,7 +33,8 @@ async def process_push_events():
             print(event_data["repo"]["name"], has_force_push)
             if has_force_push:
                 print("FORCE_PUSH: ", event_data)
-                summary = await llm.generate_force_push_summary(event_data)
+                accidents = await database.get_accidents("force_push", event_data["repo"]["name"])
+                summary = await llm.generate_force_push_summary(event_data, accidents)
                 await database.save_event_summary(event_data, summary)
                 await database.save_accident("force_push", event_data["repo"]["name"])
                 print("Saved summary:", summary)
@@ -58,7 +59,8 @@ async def process_spam_events():
             await database.save_accident("issue_created", event_data["repo"]["name"])
             if (spam_events >= 3):
                 print("SUS ACTIVITY: ", event_data)
-                summary = await llm.generate_activity_spike_summary(event_data)
+                accidents = await database.get_accidents("issue_created", event_data["repo"]["name"], hours=24)
+                summary = await llm.generate_activity_spike_summary(event_data, accidents)
                 await database.save_event_summary(event_data, summary)
                 print("Saved summary:", summary)
             
