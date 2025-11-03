@@ -35,6 +35,7 @@ async def process_push_events():
                 print("FORCE_PUSH: ", event_data)
                 summary = await llm.generate_force_push_summary(event_data)
                 await database.save_event_summary(event_data, summary)
+                await database.save_accident("force_push", event_data["repo"]["name"])
                 print("Saved summary:", summary)
             
             await asyncio.sleep(0.1)
@@ -54,6 +55,7 @@ async def process_spam_events():
             spam_events = await github_client.detect_spam(event_data["repo"]["name"], event_data["created_at"])
             
             print(event_data["repo"]["name"], spam_events)
+            await database.save_accident("issue_created", event_data["repo"]["name"])
             if (spam_events >= 3):
                 print("SUS ACTIVITY: ", event_data)
                 summary = await llm.generate_activity_spike_summary(event_data)
