@@ -39,9 +39,22 @@ export default function Home() {
         </div>
       </div>
       <div className="flex flex-col gap-y-4">
-        {activities.map((activity, index) => (
+      {activities
+        .filter((activity) => {
+          try {
+            if (activity.summary) {
+              JSON.parse(activity.summary);
+              return true;
+            }
+            return false;
+          } catch (error) {
+            console.warn('Skipping invalid activity:', activity.id, error);
+            return false;
+          }
+        })
+        .map((activity, index) => (
           <Card
-            key={index}
+            key={activity.id || index}
             repoName={activity.payload.repo.name}
             eventType={activity.payload.type}
             summaries={JSON.parse(activity.summary)}
